@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.6;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+contract StakingUSDT is Ownable {
+    using SafeERC20 for IERC20;
+
+    struct StakeInfo {
+        uint256 stakedAmount;
+        uint256 stakedAt;
+        uint256 stakeEnd;
+        uint256 rewards;
+        uint256 weeklyRewards; // To keep track of weekly rewards
+    }
+
+    IERC20 public immutable USDT;
+    address public immutable hotWallet;
+
+    mapping(address => StakeInfo) public userStakeInfos;
+
+    event Staked(address indexed staker, uint256 amount, string message);
+    event Unstaked(address indexed staker, uint256 amount, string message);
+    event Withdrawn(address indexed owner, uint256 amount, string message);
+
+    constructor(address _usdtAddress, address _hotWallet) Ownable(msg.sender) {
+        USDT = IERC20(_usdtAddress);
+        hotWallet = _hotWallet;
+    }
+
+    function stake(uint256 amount, uint8 durationInWeeks) external {
+        require(amount > 0, "Amount must be greater than zero");
+        require(userStakeInfos[msg.sender].stakedAmount == 0, "Already staked");
+
+        USDT.safeTransferFrom(msg.sender, address(this), amount);
+        USDT.safeTransfer(hotWallet, amount); // Transfer to hot wallet for real-time fund management
+
+        uint256 stakeEnd = block.timestamp + (durationInWeeks * 1 weeks);
+        uint256 rewards = _calculateRewards(durationInWeeks, amount);
+
+        userStakeInfos[msg.sender] = StakeInfo({
+            stakedAmount: amount,
+            stakedAt: block.timestamp,
+            stakeEnd: stakeEnd,
+            rewards: rewards,
+            weeklyRewards: (amount * 1) / 100 // 1% weekly return for no-lock staking
+        });
+
+        emit Staked(msg.sender, amount, "Stake successful");
+    }
+
+    function unstake() external {
+        StakeInfo storage stakeInfo = userStakeInfos[msg.sender];
+        require(stakeInfo.stakedAmount > 0, "No staked USDT");
+
+        uint256 stakedAmount = stakeInfo.stakedAmount;
+        uint256 totalToReturn;
+        uint256 currentTime = block.timestamp;
+
+        // Early unlocking penalties
+        if (currentTime < stakeInfo.stakeEnd) {
+            uint256 penalty = _calculatePenalty(stakeInfo.stakedAt, stakeInfo.stakeEnd, stakedAmount);
+            totalToReturn = stakedAmount - penalty;
+            emit Unstaked(msg.sender, totalToReturn, "Unstake successful with penalty applied");
+        } else {
+            totalToReturn = stakedAmount + stakeInfo.rewards; // Return staked amount + rewards
+            emit Unstaked(msg.sender, totalToReturn, "Unstake successful");
+        }
+
+        require(USDT.balanceOf(hotWallet) >= totalToReturn, "Insufficient balance in hot wallet");
+        USDT.safeTransferFrom(hotWallet, msg.sender, totalToReturn);
+
+        // Reset user's stake information
+        delete userStakeInfos[msg.sender];
+    }
+
+    function withdraw() external {
+        StakeInfo storage stakeInfo = userStakeInfos[msg.sender];
+        require(stakeInfo.stakedAmount > 0, "No funds to withdraw");
+
+        uint256 totalRewards = stakeInfo.rewards;
+        require(totalRewards > 0, "No rewards to withdraw");
+
+        // Reset the rewards to zero after withdrawal
+        stakeInfo.rewards = 0;
+        USDT.safeTransfer(msg.sender, totalRewards);
+        emit Withdrawn(msg.sender, totalRewards, "Withdraw successful");
+    }
+
+    function _calculateRewards(uint8 durationInWeeks, uint256 amount) internal pure returns (uint256 rewards) {
+        uint256 rewardRate;
+
+        // Define reward rates based on the staking period
+        if (durationInWeeks == 0) {
+            rewardRate = 1; // 1% for No-lock Staking
+        } else if (durationInWeeks == 2) {
+            rewardRate = 5; // 5% for 2 weeks
+        } else if (durationInWeeks == 4) {
+            rewardRate = 75; // 7.5% for 4 weeks (multiplied by 10)
+        } else if (durationInWeeks == 8) {
+            rewardRate = 10; // 10% for 8 weeks
+        } else if (durationInWeeks == 12) {
+            rewardRate = 20; // 20% for 12 weeks
+        } else if (durationInWeeks == 16) {
+            rewardRate = 30; // 30% for 16 weeks
+        } else if (durationInWeeks == 24) {
+            rewardRate = 50; // 50% for 24 weeks
+        }
+
+        rewards = (amount * rewardRate) / (rewardRate == 75 ? 1000 : 100); // Adjust divisor for 7.5%
+    }
+
+    function _calculatePenalty(uint256 stakedAt, uint256 stakeEnd, uint256 stakedAmount) internal pure returns (uint256 penalty) {
+        uint256 stakingDuration = (stakeEnd - stakedAt) / 1 weeks; // Calculate staking duration in weeks
+        if (stakingDuration == 0) {
+            penalty = (stakedAmount * 30) / 100; // Penalty for 0 weeks (if unlocked early)
+        } else if (stakingDuration <= 2) {
+            penalty = (stakedAmount * 30) / 100; // 30% penalty within 2 weeks
+        } else if (stakingDuration <= 4) {
+            penalty = (stakedAmount * 25) / 100; // 25% penalty within 4 weeks
+        } else if (stakingDuration <= 8) {
+            penalty = (stakedAmount * 20) / 100; // 20% penalty within 8 weeks
+        } else if (stakingDuration <= 12) {
+            penalty = (stakedAmount * 15) / 100; // 15% penalty within 12 weeks
+        } else if (stakingDuration <= 16) {
+            penalty = (stakedAmount * 10) / 100; // 10% penalty within 16 weeks
+        } else {
+            penalty = 0; // No penalty after the staking period
+        }
+    }
+}

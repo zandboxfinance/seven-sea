@@ -26,12 +26,6 @@ function Navbar() {
             <div className="flex items-center">
                 <ConnectButton />
                 <div className="relative">
-                    <button onClick={() => setIsOpen(!isOpen)} className="flex items-center justify-center w-24 md:w-32 h-10 rounded-[13px] p-2 bg-[#0E76FD] text-white text-[16px] font-bold ml-4">
-                        {selectedLanguage.img && (
-                            <img src={selectedLanguage.img} alt="" className="w-6 h-auto mr-2 mt-[4px]" />
-                        )}
-                        {t(selectedLanguage.label)}
-                    </button>
                     {isOpen && (
                         <div className="absolute ml-4 top-full mt-1 w-24 md:w-32 bg-[#2c2d30] text-white shadow-lg">
                             {LANGUAGES.map(({ code, label, lang }) => (
