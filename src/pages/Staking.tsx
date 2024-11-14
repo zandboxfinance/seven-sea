@@ -71,7 +71,9 @@ function Staking() {
                     <h1 className="font-bold text-[35px] md:text-[65px]">{t('swim')}</h1>
                     <h1 className="font-bold text-[35px] md:text-[65px]">{t('earn')}</h1>
                     <p className="mt-4 text-[15px] md:text-[25px]">{t('Join')}</p>
-                    <button className="flex gap-5 items-start py-5 pr-5 pl-6 mt-8 text-xl font-medium leading-tight uppercase border border-white border-solid bg-white bg-opacity-0 rounded-[50px] max-md:px-5" id="staking-section">
+                    <button 
+                        onClick={scrollToStakingSection}
+                        className="flex gap-5 items-start py-5 pr-5 pl-6 mt-8 text-xl font-medium leading-tight uppercase border border-white border-solid bg-white bg-opacity-0 rounded-[50px] max-md:px-5" id="staking-section">
                         <span data-layername="getStarted">get started</span>
                         <img loading="lazy" src="https://cdn.builder.io/api/v1/image/assets/TEMP/bc8a1e896fc15726b7d3f8274b0443debdc7f13601a48ce005764821aca12045?placeholderIfAbsent=true&apiKey=3982f1c4caac4533b049cdd9bd51d206" alt="" className="object-contain shrink-0 aspect-square w-[25px]" />
                     </button>
