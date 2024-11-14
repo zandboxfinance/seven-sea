@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import banner from '../assets/banner.png';
 import usdtbackground from '../assets/usdtplanbackground.png';
-import mystake from '../assets/my_staking_btg.png'
+import mystake from '../assets/my_staking_btg.png';
 import usdt from '../assets/usdt.png';
 import bg_whale from '../assets/bg-whale.png';
 import linktree1 from '../assets/social/linktree1.png';
@@ -12,6 +12,7 @@ import discord1 from '../assets/social/discord1.png';
 import WhaleSlider from "../components/SliderComponent";
 import PrimeInput from "../components/PrimeInput";
 import DurationSelector from "../components/DurationSelector";
+import StakingCards from "../pages/StakingCards"; // Import StakingCards component
 
 interface WhaleImagePaths {
     "0-25": string;
@@ -33,6 +34,13 @@ function Staking() {
     const [sliderValueusdt, setSliderValueusdt] = useState<number>(0);
     const [isTooltipVisible, setIsTooltipVisible] = useState(false);
 
+    // Function to scroll to the staking section
+    const scrollToStakingSection = () => {
+        const stakingSection = document.getElementById('staking-section'); // Assume you have a wrapper element with this ID
+        if (stakingSection) {
+            stakingSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
     // Function to handle duration change and update APR accordingly
     const handleDurationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -49,25 +57,6 @@ function Staking() {
         }
     };
 
-    const durationOptions = [
-        { key: 'day', percent: '15%' },
-        { key: 'month', percent: '24%' },
-        { key: 'year', percent: '36%' }
-    ];
-
-    const validatePrime = (value: string, setter: (value: string) => void) => {
-        const num = Number(value);
-        if (num !== Math.floor(num)) {
-            return;
-        }
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (value: string) => void) => {
-        const value = e.target.value;
-        const validValue = value.replace(/[^0-9.]/g, ''); // Allow only digits and a single decimal point
-        setter(validValue);
-    };
-
     const getWhaleHeadSrcusdt = (): string => {
         if (sliderValueusdt <= 25) return headImages["0-25"];
         if (sliderValueusdt <= 75) return headImages["25-75"];
@@ -79,9 +68,13 @@ function Staking() {
             <div className="flex h-screen w-full items-center text-[40px] my-[20px] md:my-0 md:text-[80px] relative justify-center">
                 <img src={banner} alt="Whale" className="absolute w-full h-[100%] my-[20px] md:h-[auto]" />
                 <div className="relative z-10 flex flex-col justify-center items-start w-full h-full px-4 mb-[-40px]">
-                    <h1 className="font-bold">{t('swim')}</h1>
-                    <h1 className="font-bold">{t('earn')}</h1>
+                    <h1 className="font-bold text-[35px] md:text-[65px]">{t('swim')}</h1>
+                    <h1 className="font-bold text-[35px] md:text-[65px]">{t('earn')}</h1>
                     <p className="mt-4 text-[15px] md:text-[25px]">{t('Join')}</p>
+                    <button className="flex gap-5 items-start py-5 pr-5 pl-6 mt-8 text-xl font-medium leading-tight uppercase border border-white border-solid bg-white bg-opacity-0 rounded-[50px] max-md:px-5" id="staking-section">
+                        <span data-layername="getStarted">get started</span>
+                        <img loading="lazy" src="https://cdn.builder.io/api/v1/image/assets/TEMP/bc8a1e896fc15726b7d3f8274b0443debdc7f13601a48ce005764821aca12045?placeholderIfAbsent=true&apiKey=3982f1c4caac4533b049cdd9bd51d206" alt="" className="object-contain shrink-0 aspect-square w-[25px]" />
+                    </button>
                 </div>
             </div>
             <div className="flex justify-between w-full">
@@ -89,16 +82,15 @@ function Staking() {
                 <p className="md:text-[20px] text-[13px] items-end flex">{t('risk')}</p>
             </div>
 
-           {/* USDT Section */}
-           <div className="flex flex-col w-full md:flex-grow p-6 mt-10 bg-black rounded-lg shadow-lg relative border-2 border-white">
-                {/* Header Section */}
+
+            {/* USDT Section */}
+            <div className="flex flex-col w-full md:flex-grow p-6 mt-10 bg-black rounded-lg shadow-lg relative border-2 border-white">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
                         <img src={usdt} alt="USDT" className="w-10 h-10 mr-2" />
                         <p className="text-xl font-bold text-white">USDT</p>
                     </div>
                     
-                    {/* Tooltip and Info Button */}
                     <div 
                         className="relative" 
                         onMouseEnter={() => setIsTooltipVisible(true)} 
@@ -113,17 +105,12 @@ function Staking() {
                     </div>
                 </div>
 
-
-
-                {/* Balance Section */}
                 <div className="flex justify-between mb-4">
                     <p className="text-gray-400">balance: 42069 USDT</p>
                     <p className="text-gray-400">≈ $42,069 USD</p>
                 </div>
 
-                {/* Content Section */}
                 <div className="flex justify-between">
-                    {/* Left Side */}
                     <div className="flex flex-col w-1/2 pr-4">
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-gray-400">Duration:</p>
@@ -154,7 +141,6 @@ function Staking() {
                         </div>
                     </div>
 
-                    {/* Right Side */}
                     <div className="flex flex-col w-1/2 pl-4">
                         <div className="mb-4 items-right">
                             <PrimeInput
@@ -172,39 +158,28 @@ function Staking() {
                     </div>
                 </div>
 
-                {/* Stake Button */}
                 <button className="w-full mt-6 py-3 bg-blue-900 rounded-lg text-white font-bold">
                     STAKE ▼
                 </button>
             </div>
-            <div className="flex justify-between w-full mt-32">
+            <div className="w-full lg:w-[47%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
+                <h2 className="text-white text-3xl font-bold mb-4">{t('nostakeyet')}</h2>
+                <p className="text-white mb-4">
+                    {t('nostakeline')}
+                </p>
+                <button
+                    onClick={scrollToStakingSection}
+                    className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
+                >
+                    {t('getstarted')}
+                </button>
+            </div>
+            <div className="flex justify-between w-full">
                 <h1 className="flex md:text-[60px] text-[30px] font-bold">{t('staking')}</h1>
             </div>
-            <div className="flex flex-wrap justify-center w-full gap-7">
-                {/* USDT Section */}
-                <div className="flex flex-wrap w-full relative mt-10">
-                    <img src={mystake} className="absolute w-full h-full" alt="" />
-                    <div className="p-2 m-2 md:m-10 w-full relative z-10 md:p-0 md:justify-between">
-                        <div className="my-autow-full md:w-[35%] ">
-                            <div className="flex items-center">
-                                <img src={usdt} alt="" className="w-14 h-14 mr-4" />
-                                <p className="text-[35px] md:text-[30px] font-bold flex">USDT</p>
-                            </div>
-                        </div>
-                        <div className="flex mt-10 justify-between">
-                            <div className="w-1/2">
-                                <p>{t('total')}</p>
-                                <p className="flex"><span className="text-[25px] md:text-[40px]">1045</span><span className="text-[13px] mt-3 ml-2 md:mt-6 md:ml-4" >USDT~$1045.00</span></p>
-                            </div>
-                            <div className="w-1/2">
-                                <p>{t('available')}</p>
-                                <p className="flex"><span className="text-[25px] md:text-[40px]">53</span><span className="text-[13px] mt-3 ml-2 md:mt-6 md:ml-4" >USDT~$1045.00</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
+            {/* Staking Cards Section */}
+            <StakingCards />
 
             {/* Footer Section */}
             <div className="flex flex-col my-10 w-full h-auto bg-black">
@@ -217,10 +192,17 @@ function Staking() {
                     <a href="https://discord.gg/xpkF6U9KJY" className="w-[25%] lg:w-[25%] ml-10">
                         <img src={discord1} alt="" className="w-full h-auto cursor-pointer" />
                     </a>
-
                 </div>
             </div>
-            <div className="w-full h-40"></div>
+            <footer className="flex flex-wrap gap-5 justify-between mt-48 text-xl font-medium tracking-wide leading-tight text-white max-md:mt-10 max-md:max-w-full">
+                <div data-layername="2024WhaleStrategyAllRightsReserved">
+                    © 2024 Whale Strategy. All rights reserved.
+                </div>
+                <a href="#" data-layername="risksInvolved" className="text-right">
+                    risks involved
+                </a>
+            </footer>
+            <div className="w-full h-1"></div>
         </div>
     );
 }
