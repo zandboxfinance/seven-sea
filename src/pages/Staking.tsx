@@ -48,6 +48,8 @@ function Staking() {
     const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
     const usdtAddress = import.meta.env.VITE_USDT_ADDRESS;
     const [calculatedReward, setCalculatedReward] = useState<string>("0");
+    const [hasStakes, setHasStakes] = useState(false);
+
 
 
     const [usdtPrice, setUsdtPrice] = useState<number | null>(null);
@@ -56,9 +58,6 @@ function Staking() {
     const [web3, setWeb3] = useState<Web3 | null>(null);
     const [usdtWalletBalance, setUsdtWalletBalance] = useState<string | null>(null);
     const [contract, setContract] = useState<any>(null);
-
-
-
 
     // Function to scroll to the staking section
     const scrollToStakingSection = () => {
@@ -87,9 +86,34 @@ function Staking() {
     // UseEffect to call fetchWalletBalance when needed
     useEffect(() => {
         if (isConnected) {
+            console.log("Wallet connection status:", isConnected);
+            console.log("Wallet address:", address);
+
+            // Show success notification when the wallet is connected
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Wallet connected successfully!',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+
             fetchWalletBalance();
         }
+
+        // Polling logic to fetch wallet balance every 5 seconds
+        const interval = setInterval(() => {
+            if (isConnected && web3) {
+                fetchWalletBalance();
+            }
+        }, 5000);
+
+        // Cleanup interval when the component is unmounted
+        return () => clearInterval(interval);
     }, [web3, address, isConnected]);
+
 
     // Update APR and Unlock Date based on Duration
     const handleDurationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -134,23 +158,22 @@ function Staking() {
             const web3Instance = new Web3(window.ethereum);
             setWeb3(web3Instance);
     
-            // Explicitly declare accounts type as string[]
-            const handleAccountsChanged = (accounts: string[]) => {
-                if (accounts.length > 0) {
-                    setWeb3(new Web3(window.ethereum));
-                    // This will automatically trigger the useEffect hook to fetch the new balance
-                } else {
-                    setUsdtWalletBalance("Not connected");
-                }
-            };
+            if (address && isConnected) {
+                const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
+                setContract(contractInstance);
     
-            window.ethereum.on('accountsChanged', handleAccountsChanged);
-    
-            return () => {
-                window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-            };
+                console.log("Wallet connected:", isConnected);
+                console.log("Wallet address:", address);
+                console.log("Web3 initialized:", web3Instance);
+                console.log("Contract initialized:", contractInstance);
+            } else {
+                console.error("Wallet is not connected.");
+            }
+        } else {
+            console.error("No Ethereum provider found.");
         }
-    }, []);
+    }, [isConnected, address]);
+    
 
     useEffect(() => {
         const calculateReward = () => {
@@ -257,83 +280,85 @@ function Staking() {
         });
     };
     
-    // Create the actual execution function
     const executeStakeUSDT = async () => {
         if (!web3) {
             console.error("Web3 is not initialized");
             return;
         }
+    
         try {
             // Convert input value to Wei
             const amountToStake = web3.utils.toWei(inputValueusdt, "ether");
-
+    
             // Step 1: Check allowance
             const usdtContract = new web3.eth.Contract(erc20ABI, usdtAddress);
             const allowance = await usdtContract.methods.allowance(address, contractAddress).call();
-
+    
             // If the allowance is less than the amount to stake, we need to approve
             if (Number(allowance) < Number(amountToStake)) {
                 // Approve the staking contract to transfer the amountToStake on behalf of the user
                 await usdtContract.methods
                     .approve(contractAddress, amountToStake) // Approve the exact amount needed
                     .send({ from: address })
-                    .on('transactionHash', (hash) => {
+                    .on("transactionHash", (hash) => {
                         Swal.fire({
-                            title: 'Approval in Progress',
+                            title: "Approval in Progress",
                             text: `Transaction Hash: ${hash}`,
-                            icon: 'info',
-                            confirmButtonText: 'OK'
+                            icon: "info",
+                            confirmButtonText: "OK",
                         });
                     });
             }
-
+    
             // Step 2: Stake the tokens after approval (or if already approved)
-            const durationInMonths = usdtduration === '30 Days' ? 1 : usdtduration === '6 Months' ? 6 : 12;
-            const gasLimit = 200000; // Set a reasonable gas limit
-            const gasPrice = web3.utils.toWei('6', 'gwei'); // Set gas price
-
-            // Call the stake function on the contract
-            await contract.methods.stake(usdtAddress, durationInMonths, amountToStake)
-                .send({ from: address, gas: gasLimit, gasPrice: gasPrice })
-                .on('receipt', async () => {
+            const durationInMonths = usdtduration === "30 Days" ? 1 : usdtduration === "6 Months" ? 6 : 12;
+    
+            // Call the `stake` function with the correct parameters
+            await contract.methods
+                .stake(durationInMonths, amountToStake) // Pass only duration and amount
+                .send({
+                    from: address,
+                    gas: 200000, // Set a reasonable gas limit
+                    gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
+                })
+                .on("receipt", async () => {
                     Swal.fire({
-                        title: 'Success!',
-                        text: 'Staked successfully!',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
+                        title: "Success!",
+                        text: "Staked successfully!",
+                        icon: "success",
+                        confirmButtonText: "OK",
                     });
-
+    
                     // Clear input fields and update UI
-                    setInputValueusdt('');
+                    setInputValueusdt("");
                     setSliderValueusdt(0);
-                    setUsdtDuration('');
-
+                    setUsdtDuration("");
+    
                     // Fetch updated staking information
                     await fetchStakes();
                     await fetchWalletBalance();
                 });
-
         } catch (error: any) {
             console.error("Staking error:", error);
-
+    
             if (error.message.includes("User denied transaction")) {
                 Swal.fire({
-                    title: 'Transaction Denied',
-                    text: 'Transaction was denied by the user.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK'
+                    title: "Transaction Denied",
+                    text: "Transaction was denied by the user.",
+                    icon: "warning",
+                    confirmButtonText: "OK",
                 });
             } else {
                 Swal.fire({
-                    title: 'Staking Failed',
+                    title: "Staking Failed",
                     text: `Staking failed: ${error.message}`,
-                    icon: 'error',
-                    confirmButtonText: 'OK'
+                    icon: "error",
+                    confirmButtonText: "OK",
                 });
             }
         }
     };
-    
+        
 
     const getWhaleHeadSrcusdt = (): string => {
         if (sliderValueusdt <= 25) return headImages["0-25"];
@@ -361,6 +386,28 @@ function Staking() {
                 <h1 className="flex md:text-[60px] text-[30px] font-bold">{t('trading')}</h1>
                 <p className="md:text-[20px] text-[13px] items-end flex">{t('risk')}</p>
             </div>
+            {/* Conditionally Render No Stakes Yet or My Stakes Button */}
+            {!hasStakes ? (
+            <div className="w-full lg:w-[47%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
+                <h2 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h2>
+                <p className="text-white mb-4">Start staking your tokens to earn rewards!</p>
+                <button
+                onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
+                >
+                Get Started
+                </button>
+            </div>
+            ) : (
+            <div className="flex justify-end w-full lg:w-[100%] mt-4 pr-6">
+                <button
+                onClick={() => document.getElementById('my-stakes-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="ml-auto bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md transform hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl active:scale-95 focus:outline-none"
+                >
+                My Stakes
+                </button>
+            </div>
+            )}
 
 
             {/* USDT Section */}

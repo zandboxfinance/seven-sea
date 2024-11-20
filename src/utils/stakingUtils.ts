@@ -5,7 +5,7 @@ const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 
 /**
  * Fetch user stakes from the blockchain.
- * @returns An array of formatted stake objects.
+ * @returns An object containing formatted stakes and a flag indicating if the user has active stakes.
  * @throws Will throw an error if the fetch fails.
  */
 export const fetchStakes = async () => {
@@ -33,7 +33,14 @@ export const fetchStakes = async () => {
       claimed: stake.claimed,
     }));
 
-    return formattedStakes;
+    const activeStakes = formattedStakes.filter((stake) => !stake.claimed);
+    const previousStakes = formattedStakes.filter((stake) => stake.claimed);
+
+    return {
+      activeStakes,
+      previousStakes,
+      hasStakes: activeStakes.length > 0,
+    };
   } catch (error) {
     console.error('Error fetching stakes:', error);
     throw error;
