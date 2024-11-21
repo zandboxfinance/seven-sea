@@ -169,7 +169,7 @@ const StakingCards: React.FC = () => {
             .claimRewards(id)
             .send({
                 from: accounts[0],
-                gas: "200000", // Set a reasonable gas limit as a string
+                gas: "200000", // Set a reasonable gas limit
                 gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
             })
             .on('transactionHash', (hash) => {
@@ -193,60 +193,24 @@ const StakingCards: React.FC = () => {
     } catch (error: any) {
         console.error('Error during claim rewards:', error);
 
-        // Check for specific errors
-        if (error.message.includes('User denied transaction')) {
-            Swal.fire({
-                title: 'Transaction Denied',
-                text: 'You have cancelled the transaction.',
-                icon: 'warning',
-                confirmButtonText: 'OK',
-            });
-        } else if (error.message.includes('Invalid stake index')) {
-            Swal.fire({
-                title: 'Claim Failed',
-                text: 'The selected stake does not exist. Please try again with a valid stake.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
-        } else if (error.message.includes('Already claimed')) {
-            Swal.fire({
-                title: 'Rewards Already Claimed',
-                text: 'The rewards for this stake have already been claimed.',
-                icon: 'info',
-                confirmButtonText: 'OK',
-            });
-        } else if (error.message.includes('Stake period not yet ended')) {
-            Swal.fire({
-                title: 'Stake Period Not Ended',
-                text: 'You can only claim rewards after the staking period has ended.',
-                icon: 'warning',
-                confirmButtonText: 'OK',
-            });
-        } else if (error.message.includes('No rewards to claim')) {
-            Swal.fire({
-                title: 'No Rewards Available',
-                text: 'There are no rewards available for this stake.',
-                icon: 'info',
-                confirmButtonText: 'OK',
-            });
+        let errorMessage = 'An unexpected error occurred. Please try again later.';
+        if (error.message.includes('Stake period not yet ended')) {
+            errorMessage = 'You cannot claim rewards before the stake period ends. Please wait until the stake period is complete.';
         } else if (error.message.includes('Insufficient balance in hot wallet')) {
-            Swal.fire({
-                title: 'Insufficient Funds',
-                text: 'The contract wallet does not have enough funds to process the rewards. Please contact support.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
-        } else {
-            // Generic fallback error message
-            Swal.fire({
-                title: 'Claim Rewards Failed',
-                text: `An unexpected error occurred: ${error.message}`,
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
+            errorMessage = 'The hot wallet does not have sufficient balance to process your rewards. Please contact support.';
+        } else if (error.message.includes('User denied transaction')) {
+            errorMessage = 'You have canceled the transaction.';
         }
+
+        Swal.fire({
+            title: 'Claim Rewards Failed',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonText: 'OK',
+        });
     }
  };
+
 
 
 
