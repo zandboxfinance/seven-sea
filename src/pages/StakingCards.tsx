@@ -63,53 +63,102 @@ const StakingCards: React.FC = () => {
 
   const handleUnstake = async (id: number) => {
     try {
-      const web3 = new Web3(window.ethereum);
-      const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
-      const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-      const contract = new web3.eth.Contract(contractABI, contractAddress);
-      const accounts = await web3.eth.getAccounts();
+        const web3 = new Web3(window.ethereum);
+        const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
+        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const accounts = await web3.eth.getAccounts();
 
-      await contract.methods
-        .unstake(id)
-        .send({ from: accounts[0] })
-        .on('transactionHash', (hash) => {
-          Swal.fire({
-            title: 'Transaction in Progress',
-            text: `Transaction Hash: ${hash}`,
-            icon: 'info',
-            confirmButtonText: 'OK',
-          });
-        })
-        .on('receipt', () => {
-          Swal.fire({
-            title: 'Success!',
-            text: 'Unstaked successfully!',
-            icon: 'success',
-            confirmButtonText: 'OK',
-          });
+        // Define the type for stake information
+        interface StakeInfo {
+            stakedAmount: string;
+            stakedAt: string;
+            stakeEnd: string;
+            rewards: string;
+            APR: string;
+            claimed: boolean;
+        }
 
-          loadStakes(); // Refresh stakes after successful unstake
-        });
+        // Fetch the stake information from the contract
+        const stakeInfo: StakeInfo[] = await contract.methods.getUserStakes(accounts[0]).call();
+
+        // Get the current stake by ID
+        const currentStake = stakeInfo[id];
+
+        if (!currentStake) {
+            Swal.fire({
+                title: 'Error',
+                text: 'Invalid stake ID. Please try again.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
+            return;
+        }
+
+        const currentTime = Math.floor(Date.now() / 1000); // Get current time in seconds
+        const stakeEnd = Number(currentStake.stakeEnd);
+
+        // Check if it's an early unstake
+        if (currentTime < stakeEnd) {
+            // Show a confirmation dialog with the penalty warning
+            const result = await Swal.fire({
+                title: 'Early Unstake Warning',
+                html: 'You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Unstake',
+                cancelButtonText: 'No, Cancel',
+            });
+
+            // If the user cancels, exit the function
+            if (!result.isConfirmed) {
+                return;
+            }
+        }
+
+        // Proceed with unstaking
+        await contract.methods
+            .unstake(id)
+            .send({ from: accounts[0] })
+            .on('transactionHash', (hash) => {
+                Swal.fire({
+                    title: 'Transaction in Progress',
+                    text: `Transaction Hash: ${hash}`,
+                    icon: 'info',
+                    confirmButtonText: 'OK',
+                });
+            })
+            .on('receipt', () => {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Unstaked successfully!',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                });
+
+                loadStakes(); // Refresh stakes after successful unstake
+            });
     } catch (error: any) {
-      console.error('Error during unstake:', error);
+        console.error('Error during unstake:', error);
 
-      if (error.message.includes('User denied transaction')) {
-        Swal.fire({
-          title: 'Transaction Denied',
-          text: 'You have cancelled the transaction.',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      } else {
-        Swal.fire({
-          title: 'Unstake Failed',
-          text: `Error: ${error.message}`,
-          icon: 'error',
-          confirmButtonText: 'OK',
-        });
-      }
+        if (error.message.includes('User denied transaction')) {
+            Swal.fire({
+                title: 'Transaction Denied',
+                text: 'You have cancelled the transaction.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+        } else {
+            Swal.fire({
+                title: 'Unstake Failed',
+                text: `Error: ${error.message}`,
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
+        }
     }
-  };
+ };
+
 
   const handleClaimRewards = async (id: number) => {
     try {
