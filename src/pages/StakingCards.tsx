@@ -69,7 +69,6 @@ const StakingCards: React.FC = () => {
         const contract = new web3.eth.Contract(contractABI, contractAddress);
         const accounts = await web3.eth.getAccounts();
 
-        // Define the type for stake information
         interface StakeInfo {
             stakedAmount: string;
             stakedAt: string;
@@ -79,10 +78,7 @@ const StakingCards: React.FC = () => {
             claimed: boolean;
         }
 
-        // Fetch the stake information from the contract
         const stakeInfo: StakeInfo[] = await contract.methods.getUserStakes(accounts[0]).call();
-
-        // Get the current stake by ID
         const currentStake = stakeInfo[id];
 
         if (!currentStake) {
@@ -95,12 +91,10 @@ const StakingCards: React.FC = () => {
             return;
         }
 
-        const currentTime = Math.floor(Date.now() / 1000); // Get current time in seconds
+        const currentTime = Math.floor(Date.now() / 1000);
         const stakeEnd = Number(currentStake.stakeEnd);
 
-        // Check if it's an early unstake
         if (currentTime < stakeEnd) {
-            // Show a confirmation dialog with the penalty warning
             const result = await Swal.fire({
                 title: 'Early Unstake Warning',
                 html: 'You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?',
@@ -110,16 +104,18 @@ const StakingCards: React.FC = () => {
                 cancelButtonText: 'No, Cancel',
             });
 
-            // If the user cancels, exit the function
             if (!result.isConfirmed) {
                 return;
             }
         }
 
-        // Proceed with unstaking
         await contract.methods
             .unstake(id)
-            .send({ from: accounts[0] })
+            .send({
+                from: accounts[0],
+                gas: "200000", // Set a reasonable gas limit as a string
+                gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
+            })
             .on('transactionHash', (hash) => {
                 Swal.fire({
                     title: 'Transaction in Progress',
@@ -160,43 +156,62 @@ const StakingCards: React.FC = () => {
  };
 
 
-  const handleClaimRewards = async (id: number) => {
+
+ const handleClaimRewards = async (id: number) => {
     try {
-      const web3 = new Web3(window.ethereum);
-      const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
-      const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-      const contract = new web3.eth.Contract(contractABI, contractAddress);
-      const accounts = await web3.eth.getAccounts();
+        const web3 = new Web3(window.ethereum);
+        const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
+        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const accounts = await web3.eth.getAccounts();
 
-      await contract.methods.claimRewards(id).send({ from: accounts[0] });
-      Swal.fire({
-        title: 'Success!',
-        text: 'Rewards claimed successfully!',
-        icon: 'success',
-        confirmButtonText: 'OK',
-      });
+        await contract.methods
+            .claimRewards(id)
+            .send({
+                from: accounts[0],
+                gas: "200000", // Set a reasonable gas limit as a string
+                gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
+            })
+            .on('transactionHash', (hash) => {
+                Swal.fire({
+                    title: 'Transaction in Progress',
+                    text: `Transaction Hash: ${hash}`,
+                    icon: 'info',
+                    confirmButtonText: 'OK',
+                });
+            })
+            .on('receipt', () => {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Rewards claimed successfully!',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                });
 
-      loadStakes();
+                loadStakes();
+            });
     } catch (error: any) {
-      console.error('Error during claim rewards:', error);
+        console.error('Error during claim rewards:', error);
 
-      if (error.message.includes('User denied transaction')) {
-        Swal.fire({
-          title: 'Transaction Denied',
-          text: 'You have cancelled the transaction.',
-          icon: 'warning',
-          confirmButtonText: 'OK',
-        });
-      } else {
-        Swal.fire({
-          title: 'Claim Rewards Failed',
-          text: `Error: ${error.message}`,
-          icon: 'error',
-          confirmButtonText: 'OK',
-        });
-      }
+        if (error.message.includes('User denied transaction')) {
+            Swal.fire({
+                title: 'Transaction Denied',
+                text: 'You have cancelled the transaction.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+        } else {
+            Swal.fire({
+                title: 'Claim Rewards Failed',
+                text: `Error: ${error.message}`,
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
+        }
     }
-  };
+ };
+
+
 
   if (loading) return <p>Loading stakes...</p>;
 
