@@ -67,6 +67,14 @@ function Staking() {
         }
     };
 
+    // Function to scroll to the staking section
+    const scrollToStakingSection2 = () => {
+        const stakingSection = document.getElementById('my-stakes-section'); // Assume you have a wrapper element with this ID
+        if (stakingSection) {
+            stakingSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     // Fetch wallet balance function to be used globally
     const fetchWalletBalance = async () => {
         if (web3 && address && isConnected) {
@@ -376,38 +384,17 @@ function Staking() {
                     <p className="mt-4 text-[15px] md:text-[25px]">{t('Join')}</p>
                     <button 
                         onClick={scrollToStakingSection}
-                        className="flex gap-5 items-start py-5 pr-5 pl-6 mt-8 text-xl font-medium leading-tight uppercase border border-white border-solid bg-white bg-opacity-0 rounded-[50px] max-md:px-5" id="staking-section">
+                        className="flex gap-5 items-start py-5 pr-5 pl-6 mt-8 text-xl font-medium leading-tight uppercase border border-white border-solid bg-white bg-opacity-0 rounded-[50px] max-md:px-5">
                         <span data-layername="getStarted">get started</span>
                         <img loading="lazy" src="https://cdn.builder.io/api/v1/image/assets/TEMP/bc8a1e896fc15726b7d3f8274b0443debdc7f13601a48ce005764821aca12045?placeholderIfAbsent=true&apiKey=3982f1c4caac4533b049cdd9bd51d206" alt="" className="object-contain shrink-0 aspect-square w-[25px]" />
                     </button>
                 </div>
             </div>
-            <div className="flex justify-between w-full">
+            <div className="flex justify-between w-full" id="staking-section">
                 <h1 className="flex md:text-[60px] text-[30px] font-bold">{t('trading')}</h1>
                 <p className="md:text-[20px] text-[13px] items-end flex">{t('risk')}</p>
             </div>
-            {/* Conditionally Render No Stakes Yet or My Stakes Button */}
-            {!hasStakes ? (
-            <div className="w-full lg:w-[47%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
-                <h2 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h2>
-                <p className="text-white mb-4">Start staking your tokens to earn rewards!</p>
-                <button
-                onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
-                >
-                Get Started
-                </button>
-            </div>
-            ) : (
-            <div className="flex justify-end w-full lg:w-[100%] mt-4 pr-6">
-                <button
-                onClick={() => document.getElementById('my-stakes-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="ml-auto bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md transform hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl active:scale-95 focus:outline-none"
-                >
-                My Stakes
-                </button>
-            </div>
-            )}
+            
 
 
             {/* USDT Section */}
@@ -515,19 +502,8 @@ function Staking() {
                     STAKE ▼
                 </button>
             </div>
-            <div className="w-full lg:w-[47%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
-                <h2 className="text-white text-3xl font-bold mb-4">{t('nostakeyet')}</h2>
-                <p className="text-white mb-4">
-                    {t('nostakeline')}
-                </p>
-                <button
-                    onClick={scrollToStakingSection}
-                    className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
-                >
-                    {t('getstarted')}
-                </button>
-            </div>
-            <div className="flex justify-between w-full">
+            <div className="w-full h-1"></div>
+            <div className="flex justify-between w-full" id="my-stakes-section">
                 <h1 className="flex md:text-[60px] text-[30px] font-bold">{t('staking')}</h1>
             </div>
 
