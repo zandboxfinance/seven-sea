@@ -172,41 +172,47 @@ const StakingCards: React.FC = () => {
                 gas: "200000", // Set a reasonable gas limit
                 gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
             })
-            .on('transactionHash', (hash) => {
+            .on("transactionHash", (hash) => {
                 Swal.fire({
-                    title: 'Transaction in Progress',
+                    title: "Transaction in Progress",
                     text: `Transaction Hash: ${hash}`,
-                    icon: 'info',
-                    confirmButtonText: 'OK',
+                    icon: "info",
+                    confirmButtonText: "OK",
                 });
             })
-            .on('receipt', () => {
+            .on("receipt", () => {
                 Swal.fire({
-                    title: 'Success!',
-                    text: 'Rewards claimed successfully!',
-                    icon: 'success',
-                    confirmButtonText: 'OK',
+                    title: "Success!",
+                    text: "Rewards claimed successfully!",
+                    icon: "success",
+                    confirmButtonText: "OK",
                 });
 
-                loadStakes();
+                loadStakes(); // Refresh stakes after successful claim
             });
     } catch (error: any) {
-        console.error('Error during claim rewards:', error);
+        console.error("Error during claim rewards:", error);
 
-        let errorMessage = 'An unexpected error occurred. Please try again later.';
-        if (error.message.includes('Stake period not yet ended')) {
-            errorMessage = 'You cannot claim rewards before the stake period ends. Please wait until the stake period is complete.';
-        } else if (error.message.includes('Insufficient balance in hot wallet')) {
-            errorMessage = 'The hot wallet does not have sufficient balance to process your rewards. Please contact support.';
-        } else if (error.message.includes('User denied transaction')) {
-            errorMessage = 'You have canceled the transaction.';
+        // Default error message
+        let errorMessage = "An unexpected error occurred. Please try again later.";
+
+        // Extract the revert reason from the error object
+        if (error?.data?.message) {
+            if (error.data.message.includes("Stake period not yet ended")) {
+                errorMessage = "You cannot claim rewards before the stake period ends. Please wait until the stake period is complete.";
+            } else if (error.data.message.includes("Insufficient balance in hot wallet")) {
+                errorMessage = "The hot wallet does not have sufficient balance to process your rewards. Please contact support.";
+            }
+        } else if (error.message.includes("User denied transaction")) {
+            errorMessage = "You have canceled the transaction.";
         }
 
+        // Display the error message to the user
         Swal.fire({
-            title: 'Claim Rewards Failed',
+            title: "Claim Rewards Failed",
             text: errorMessage,
-            icon: 'error',
-            confirmButtonText: 'OK',
+            icon: "error",
+            confirmButtonText: "OK",
         });
     }
  };
