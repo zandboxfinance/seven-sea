@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import StakingCard from './StakingCard';
 import Swal from 'sweetalert2';
-import Web3 from "web3";
+import Web3 from 'web3';
 
-import { fetchStakes as fetchStakesFromUtils } from '../utils/stakingUtils'; // Import centralized fetch logic
+
+import { fetchStakes as fetchStakesFromUtils } from "../utils/stakingUtils"; // Import centralized fetch logic
 
 const StakingCards: React.FC = () => {
   const [stakes, setStakes] = useState<any[]>([]);
@@ -83,10 +84,10 @@ const StakingCards: React.FC = () => {
 
         if (!currentStake) {
             Swal.fire({
-                title: 'Error',
-                text: 'Invalid stake ID. Please try again.',
-                icon: 'error',
-                confirmButtonText: 'OK',
+                title: "Error",
+                text: "Invalid stake ID. Please try again.",
+                icon: "error",
+                confirmButtonText: "OK",
             });
             return;
         }
@@ -96,12 +97,12 @@ const StakingCards: React.FC = () => {
 
         if (currentTime < stakeEnd) {
             const result = await Swal.fire({
-                title: 'Early Unstake Warning',
-                html: 'You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?',
-                icon: 'warning',
+                title: "Early Unstake Warning",
+                html: "You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?",
+                icon: "warning",
                 showCancelButton: true,
-                confirmButtonText: 'Yes, Unstake',
-                cancelButtonText: 'No, Cancel',
+                confirmButtonText: "Yes, Unstake",
+                cancelButtonText: "No, Cancel",
             });
 
             if (!result.isConfirmed) {
@@ -109,114 +110,149 @@ const StakingCards: React.FC = () => {
             }
         }
 
-        await contract.methods
+        const transaction = await contract.methods
             .unstake(id)
             .send({
                 from: accounts[0],
                 gas: "200000", // Set a reasonable gas limit as a string
                 gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
-            })
-            .on('transactionHash', (hash) => {
-                Swal.fire({
-                    title: 'Transaction in Progress',
-                    text: `Transaction Hash: ${hash}`,
-                    icon: 'info',
-                    confirmButtonText: 'OK',
-                });
-            })
-            .on('receipt', () => {
-                Swal.fire({
-                    title: 'Success!',
-                    text: 'Unstaked successfully!',
-                    icon: 'success',
-                    confirmButtonText: 'OK',
-                });
-
-                loadStakes(); // Refresh stakes after successful unstake
             });
-    } catch (error: any) {
-        console.error('Error during unstake:', error);
 
-        if (error.message.includes('User denied transaction')) {
-            Swal.fire({
-                title: 'Transaction Denied',
-                text: 'You have cancelled the transaction.',
-                icon: 'warning',
-                confirmButtonText: 'OK',
-            });
-        } else {
-            Swal.fire({
-                title: 'Unstake Failed',
-                text: `Error: ${error.message}`,
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
-        }
-    }
- };
+        // Transaction hash for BscScan
+        const transactionHash = transaction.transactionHash;
 
-
-
- const handleClaimRewards = async (id: number) => {
-    try {
-        const web3 = new Web3(window.ethereum);
-        const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
-        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
-        const accounts = await web3.eth.getAccounts();
-
-        await contract.methods
-            .claimRewards(id)
-            .send({
-                from: accounts[0],
-                gas: "200000", // Set a reasonable gas limit
-                gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
-            })
-            .on("transactionHash", (hash) => {
-                Swal.fire({
-                    title: "Transaction in Progress",
-                    text: `Transaction Hash: ${hash}`,
-                    icon: "info",
-                    confirmButtonText: "OK",
-                });
-            })
-            .on("receipt", () => {
-                Swal.fire({
-                    title: "Success!",
-                    text: "Rewards claimed successfully!",
-                    icon: "success",
-                    confirmButtonText: "OK",
-                });
-
-                loadStakes(); // Refresh stakes after successful claim
-            });
-    } catch (error: any) {
-        console.error("Error during claim rewards:", error);
-
-        // Default error message
-        let errorMessage = "An unexpected error occurred. Please try again later.";
-
-        // Extract the revert reason from the error object
-        if (error?.data?.message) {
-            if (error.data.message.includes("Stake period not yet ended")) {
-                errorMessage = "You cannot claim rewards before the stake period ends. Please wait until the stake period is complete.";
-            } else if (error.data.message.includes("Insufficient balance in hot wallet")) {
-                errorMessage = "The hot wallet does not have sufficient balance to process your rewards. Please contact support.";
-            }
-        } else if (error.message.includes("User denied transaction")) {
-            errorMessage = "You have canceled the transaction.";
-        }
-
-        // Display the error message to the user
         Swal.fire({
-            title: "Claim Rewards Failed",
-            text: errorMessage,
+            title: "Transaction in Progress",
+            html: `Transaction Hash: <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">View on BscScan</a>`,
+            icon: "info",
+            confirmButtonText: "OK",
+        });
+
+        const receipt = await web3.eth.getTransactionReceipt(transactionHash);
+        if (receipt.status) {
+            Swal.fire({
+                title: "Success!",
+                html: `Unstaked successfully! <br /> <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" 
+                   rel="noopener noreferrer" 
+                   style="background: #e53e3e; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                   View Transaction on BscScan</a>`,
+                icon: "success",
+                confirmButtonText: "OK",
+            });
+            loadStakes(); // Refresh stakes after successful unstake
+        } else {
+            throw new Error("Transaction failed: The transaction was reverted.");
+        }
+    } catch (error: any) {
+        console.error("Error during unstake:", error);
+
+        let errorMessage = "An unexpected error occurred. Please try again later.";
+        if (error?.receipt?.transactionHash) {
+            errorMessage = `Transaction failed. Check transaction details <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">here</a>.`;
+        }
+
+        Swal.fire({
+            title: "Unstake Failed",
+            html: errorMessage,
             icon: "error",
             confirmButtonText: "OK",
         });
     }
  };
 
+
+ const handleClaimRewards = async (id: number) => {
+    try {
+        const web3 = new Web3(window.ethereum); // Initialize Web3
+        const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
+        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+        const contract = new web3.eth.Contract(contractABI, contractAddress);
+        const accounts = await web3.eth.getAccounts();
+
+        // Send the transaction and get the receipt
+        const transaction = await contract.methods.claimRewards(id).send({
+            from: accounts[0],
+            gas: "300000", // Increased gas limit
+            gasPrice: web3.utils.toWei("6", "gwei"),
+        });
+
+        // Access the transaction hash from the returned transaction object
+        const transactionHash = transaction.transactionHash;
+
+        // Show transaction in progress popup with enhanced styling
+        Swal.fire({
+            title: '<h2 style="color: #3182ce; font-weight: bold;">Transaction in Progress</h2>',
+            html: `
+                <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                    Your transaction is being processed. You can monitor its status on BscScan:
+                </p>
+                <a href="https://testnet.bscscan.com/tx/${transactionHash}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   style="background: #4299e1; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                   View Transaction on BscScan
+                </a>
+            `,
+            icon: "info",
+            showConfirmButton: false, // No confirm button for progress
+        });
+
+        // Wait for the transaction receipt
+        const receipt = await web3.eth.getTransactionReceipt(transactionHash);
+        if (receipt.status) {
+            Swal.fire({
+                title: '<h2 style="color: #38a169; font-weight: bold;">Success!</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Rewards have been successfully claimed. View transaction details:
+                    </p>
+                    <a href="https://testnet.bscscan.com/tx/${transactionHash}" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       style="background: #38a169; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                       View Transaction on BscScan
+                    </a>
+                `,
+                icon: "success",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: '#38a169',
+            });
+            loadStakes(); // Refresh stakes after successful claim
+        } else {
+            throw new Error("Transaction failed: The transaction was reverted.");
+        }
+    } catch (error: any) {
+        console.error("Error during claim rewards:", error);
+
+        let errorMessage = `
+            <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                An unexpected error occurred. Please try again later.
+            </p>
+        `;
+
+        if (error?.receipt?.transactionHash) {
+            errorMessage = `
+                <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                    Unfortunately, the transaction failed. You can review the transaction details on BscScan:
+                </p>
+                <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   style="background: #e53e3e; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                   View Transaction on BscScan
+                </a>
+            `;
+        }
+
+        Swal.fire({
+            title: '<h2 style="color: #e53e3e; font-weight: bold;">Claim Rewards Failed</h2>',
+            html: errorMessage,
+            icon: "error",
+            confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+            confirmButtonColor: '#e53e3e',
+        });
+    }
+};
 
 
 

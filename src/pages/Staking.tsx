@@ -12,7 +12,7 @@ import bg_whale from '../assets/bg-whale.png';
 import linktree1 from '../assets/social/linktree1.png';
 import discord1 from '../assets/social/discord1.png';
 import Swal from 'sweetalert2';
-import { fetchStakes } from "../utils/stakingUtils";
+import { fetchStakes } from '../utils/stakingUtils';
 
 
 import WhaleSlider from "../components/SliderComponent";
@@ -229,10 +229,15 @@ function Staking() {
     const handleStakeUSDT = () => {
         if (!web3 || !contract || !address) {
             Swal.fire({
-                title: 'Oops!',
-                text: 'Please connect your wallet first!',
-                icon: 'warning',
-                confirmButtonText: 'OK'
+                title: '<h2 style="color: #e53e3e; font-weight: bold;">Oops!</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Please connect your wallet first!
+                    </p>
+                `,
+                icon: "warning",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#e53e3e",
             });
             return;
         }
@@ -240,10 +245,15 @@ function Staking() {
         // Validate input amount
         if (!inputValueusdt || parseFloat(inputValueusdt) <= 0) {
             Swal.fire({
-                title: 'Invalid Input',
-                text: 'Please enter a valid amount greater than zero to stake.',
-                icon: 'error',
-                confirmButtonText: 'OK'
+                title: '<h2 style="color: #e53e3e; font-weight: bold;">Invalid Input</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Please enter a valid amount greater than zero to stake.
+                    </p>
+                `,
+                icon: "error",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#e53e3e",
             });
             return;
         }
@@ -251,10 +261,15 @@ function Staking() {
         // Validate duration selection
         if (!usdtduration) {
             Swal.fire({
-                title: 'Select Duration',
-                text: 'Please select a staking duration.',
-                icon: 'info',
-                confirmButtonText: 'OK'
+                title: '<h2 style="color: #4299e1; font-weight: bold;">Select Duration</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Please select a staking duration.
+                    </p>
+                `,
+                icon: "info",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#4299e1",
             });
             return;
         }
@@ -262,7 +277,7 @@ function Staking() {
         // Confirm staking details
         confirmStaking('USDT', inputValueusdt, usdtduration, executeStakeUSDT);
     };
-
+    
     const confirmStaking = (
         tokenName: string,
         amount: string | number,
@@ -270,17 +285,23 @@ function Staking() {
         handleStake: () => Promise<void>
     ) => {
         Swal.fire({
-            title: `Confirm Staking ${tokenName}`,
+            title: `<h2 style="color: #3182ce; font-weight: bold;">Confirm Staking ${tokenName}</h2>`,
             html: `
-                <p>You are about to stake:</p>
-                <ul>
+                <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                    You are about to stake:
+                </p>
+                <ul style="color: #444; font-size: 16px; margin: 10px 0;">
                     <li><b>Token:</b> ${tokenName}</li>
                     <li><b>Amount:</b> ${amount}</li>
                     <li><b>Duration:</b> ${duration}</li>
                 </ul>
             `,
+            icon: "info",
             showCancelButton: true,
-            confirmButtonText: 'Confirm',
+            confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">Confirm</span>',
+            cancelButtonText: '<span style="font-size: 16px; font-weight: bold;">Cancel</span>',
+            confirmButtonColor: "#3182ce",
+            cancelButtonColor: "#e53e3e",
         }).then((result) => {
             if (result.isConfirmed) {
                 handleStake();
@@ -295,78 +316,101 @@ function Staking() {
         }
     
         try {
-            // Convert input value to Wei
             const amountToStake = web3.utils.toWei(inputValueusdt, "ether");
+            const usdtContract = new web3.eth.Contract(erc20ABI, usdtAddress);
     
             // Step 1: Check allowance
-            const usdtContract = new web3.eth.Contract(erc20ABI, usdtAddress);
             const allowance = await usdtContract.methods.allowance(address, contractAddress).call();
     
-            // If the allowance is less than the amount to stake, we need to approve
             if (Number(allowance) < Number(amountToStake)) {
-                // Approve the staking contract to transfer the amountToStake on behalf of the user
-                await usdtContract.methods
-                    .approve(contractAddress, amountToStake) // Approve the exact amount needed
-                    .send({ from: address })
-                    .on("transactionHash", (hash) => {
-                        Swal.fire({
-                            title: "Approval in Progress",
-                            text: `Transaction Hash: ${hash}`,
-                            icon: "info",
-                            confirmButtonText: "OK",
-                        });
-                    });
+                // Approve transaction
+                const approval = await usdtContract.methods
+                    .approve(contractAddress, amountToStake)
+                    .send({ from: address });
+    
+                Swal.fire({
+                    title: '<h2 style="color: #3182ce; font-weight: bold;">Approval in Progress</h2>',
+                    html: `
+                        <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                            Approval transaction is being processed. You can monitor its status here:
+                        </p>
+                        <a href="https://testnet.bscscan.com/tx/${approval.transactionHash}" 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           style="background: #4299e1; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                           View Transaction on BscScan
+                        </a>
+                    `,
+                    icon: "info",
+                    showConfirmButton: false,
+                });
             }
     
-            // Step 2: Stake the tokens after approval (or if already approved)
+            // Step 2: Stake transaction
             const durationInMonths = usdtduration === "30 Days" ? 1 : usdtduration === "6 Months" ? 6 : 12;
     
-            // Call the `stake` function with the correct parameters
-            await contract.methods
-                .stake(durationInMonths, amountToStake) // Pass only duration and amount
-                .send({
-                    from: address,
-                    gas: 200000, // Set a reasonable gas limit
-                    gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
-                })
-                .on("receipt", async () => {
-                    Swal.fire({
-                        title: "Success!",
-                        text: "Staked successfully!",
-                        icon: "success",
-                        confirmButtonText: "OK",
-                    });
+            const transaction = await contract.methods.stake(durationInMonths, amountToStake).send({
+                from: address,
+                gas: 200000,
+                gasPrice: web3.utils.toWei("6", "gwei"),
+            });
     
-                    // Clear input fields and update UI
-                    setInputValueusdt("");
-                    setSliderValueusdt(0);
-                    setUsdtDuration("");
+            Swal.fire({
+                title: '<h2 style="color: #38a169; font-weight: bold;">Staking Successful!</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Your staking transaction was successful. View transaction details:
+                    </p>
+                    <a href="https://testnet.bscscan.com/tx/${transaction.transactionHash}" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       style="background: #38a169; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                       View Transaction on BscScan
+                    </a>
+                `,
+                icon: "success",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#38a169",
+            });
     
-                    // Fetch updated staking information
-                    await fetchStakes();
-                    await fetchWalletBalance();
-                });
+            setInputValueusdt("");
+            setSliderValueusdt(0);
+            setUsdtDuration("");
+            await fetchStakes();
+            await fetchWalletBalance();
         } catch (error: any) {
             console.error("Staking error:", error);
     
-            if (error.message.includes("User denied transaction")) {
-                Swal.fire({
-                    title: "Transaction Denied",
-                    text: "Transaction was denied by the user.",
-                    icon: "warning",
-                    confirmButtonText: "OK",
-                });
-            } else {
-                Swal.fire({
-                    title: "Staking Failed",
-                    text: `Staking failed: ${error.message}`,
-                    icon: "error",
-                    confirmButtonText: "OK",
-                });
+            let errorMessage = `
+                <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                    An unexpected error occurred. Please try again later.
+                </p>
+            `;
+    
+            if (error?.receipt?.transactionHash) {
+                errorMessage = `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        Unfortunately, the transaction failed. You can review the transaction details:
+                    </p>
+                    <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       style="background: #e53e3e; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+                       View Transaction on BscScan
+                    </a>
+                `;
             }
+    
+            Swal.fire({
+                title: '<h2 style="color: #e53e3e; font-weight: bold;">Staking Failed</h2>',
+                html: errorMessage,
+                icon: "error",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#e53e3e",
+            });
         }
     };
-        
+            
 
     const getWhaleHeadSrcusdt = (): string => {
         if (sliderValueusdt <= 25) return headImages["0-25"];
