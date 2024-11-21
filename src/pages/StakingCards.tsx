@@ -193,6 +193,7 @@ const StakingCards: React.FC = () => {
     } catch (error: any) {
         console.error('Error during claim rewards:', error);
 
+        // Check for specific errors
         if (error.message.includes('User denied transaction')) {
             Swal.fire({
                 title: 'Transaction Denied',
@@ -200,10 +201,46 @@ const StakingCards: React.FC = () => {
                 icon: 'warning',
                 confirmButtonText: 'OK',
             });
+        } else if (error.message.includes('Invalid stake index')) {
+            Swal.fire({
+                title: 'Claim Failed',
+                text: 'The selected stake does not exist. Please try again with a valid stake.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
+        } else if (error.message.includes('Already claimed')) {
+            Swal.fire({
+                title: 'Rewards Already Claimed',
+                text: 'The rewards for this stake have already been claimed.',
+                icon: 'info',
+                confirmButtonText: 'OK',
+            });
+        } else if (error.message.includes('Stake period not yet ended')) {
+            Swal.fire({
+                title: 'Stake Period Not Ended',
+                text: 'You can only claim rewards after the staking period has ended.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+            });
+        } else if (error.message.includes('No rewards to claim')) {
+            Swal.fire({
+                title: 'No Rewards Available',
+                text: 'There are no rewards available for this stake.',
+                icon: 'info',
+                confirmButtonText: 'OK',
+            });
+        } else if (error.message.includes('Insufficient balance in hot wallet')) {
+            Swal.fire({
+                title: 'Insufficient Funds',
+                text: 'The contract wallet does not have enough funds to process the rewards. Please contact support.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+            });
         } else {
+            // Generic fallback error message
             Swal.fire({
                 title: 'Claim Rewards Failed',
-                text: `Error: ${error.message}`,
+                text: `An unexpected error occurred: ${error.message}`,
                 icon: 'error',
                 confirmButtonText: 'OK',
             });
