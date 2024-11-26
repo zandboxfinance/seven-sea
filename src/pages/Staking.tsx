@@ -227,7 +227,7 @@ function Staking() {
     
         if (testMode) {
             // Test mode: 1 minute as a fraction of a year (525600 minutes in a year)
-            durationFraction = 1 / 525600;
+            durationFraction = 1;
         } else {
             // Real mode: Duration as a fraction of the year
             durationFraction =
