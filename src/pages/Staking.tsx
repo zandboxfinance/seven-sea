@@ -35,9 +35,10 @@ const headImages: WhaleImagePaths = {
 };
 
 function Staking() {
+    const [testMode, setTestMode] = useState(false); // Test mode state
     const { t } = useTranslation();
     const [usdtduration, setUsdtDuration] = useState("");
-    const [apr, setApr] = useState("15%");
+    const [apr, setApr] = useState("");
     const [inputValueusdt, setInputValueusdt] = useState('');
     const [sliderValueusdt, setSliderValueusdt] = useState<number>(0);
     const [isTooltipVisible, setIsTooltipVisible] = useState(false);
@@ -129,15 +130,22 @@ function Staking() {
         setUsdtDuration(selectedDuration);
 
         const now = new Date();
-        if (selectedDuration === "30 Days") {
-        setApr("15%");
-        now.setDate(now.getDate() + 30);
-        } else if (selectedDuration === "6 Months") {
-        setApr("24%");
-        now.setMonth(now.getMonth() + 6);
-        } else if (selectedDuration === "1 Year") {
-        setApr("36%");
-        now.setFullYear(now.getFullYear() + 1);
+        if (testMode) {
+            // Test mode: Fixed 1-minute duration
+            setApr("5%");
+            now.setMinutes(now.getMinutes() + 1);
+        } else {
+            // Real mode: Calculate based on duration
+            if (selectedDuration === "30 Days") {
+                setApr("15%");
+                now.setDate(now.getDate() + 30);
+            } else if (selectedDuration === "6 Months") {
+                setApr("24%");
+                now.setMonth(now.getMonth() + 6);
+            } else if (selectedDuration === "1 Year") {
+                setApr("36%");
+                now.setFullYear(now.getFullYear() + 1);
+            }
         }
         setUnlockDate(now.toLocaleString());
     };
@@ -161,7 +169,7 @@ function Staking() {
         }
     };
 
-    useEffect(() => {
+    useEffect(() => { 
         if (window.ethereum) {
             const web3Instance = new Web3(window.ethereum);
             setWeb3(web3Instance);
@@ -174,6 +182,17 @@ function Staking() {
                 console.log("Wallet address:", address);
                 console.log("Web3 initialized:", web3Instance);
                 console.log("Contract initialized:", contractInstance);
+    
+                // Fetch test mode immediately
+                fetchTestMode(contractInstance);
+    
+                // Set up polling to fetch test mode status periodically
+                const interval = setInterval(() => {
+                    fetchTestMode(contractInstance);
+                }, 5000); // Poll every 5 seconds
+    
+                // Cleanup interval when component unmounts
+                return () => clearInterval(interval);
             } else {
                 console.error("Wallet is not connected.");
             }
@@ -182,31 +201,53 @@ function Staking() {
         }
     }, [isConnected, address]);
     
+    // Global fetchTestMode function
+    const fetchTestMode = async (contractInstance: any) => {
+        try {
+            const isTestMode = await contractInstance.methods.testMode().call();
+            setTestMode(!!isTestMode); // Ensure the value is boolean
+            console.log("Test Mode:", isTestMode ? "Enabled" : "Disabled");
+        } catch (error) {
+            console.error("Error fetching test mode:", error);
+        }
+    };
+    
+    
+
+    const calculateReward = () => {
+        if (!inputValueusdt || isNaN(Number(inputValueusdt))) {
+            setCalculatedReward("0");
+            return;
+        }
+    
+        const inputAmount = parseFloat(inputValueusdt); // Convert input to a number
+        const aprValue = parseFloat(apr.replace("%", "")) / 100; // Convert APR to a decimal
+    
+        let durationFraction;
+    
+        if (testMode) {
+            // Test mode: 1 minute as a fraction of a year (525600 minutes in a year)
+            durationFraction = 1 / 525600;
+        } else {
+            // Real mode: Duration as a fraction of the year
+            durationFraction =
+                usdtduration === "30 Days"
+                    ? 30 / 365 // 30 days as a fraction of a year
+                    : usdtduration === "6 Months"
+                    ? 6 / 12 // 6 months as a fraction of a year
+                    : 1; // 1 year
+        }
+    
+        // Calculate the reward
+        const reward = inputAmount + inputAmount * aprValue * durationFraction;
+        setCalculatedReward(reward.toFixed(4)); // Format to 4 decimals
+    };
+    
 
     useEffect(() => {
-        const calculateReward = () => {
-            if (!inputValueusdt || isNaN(Number(inputValueusdt))) {
-                setCalculatedReward("0");
-                return;
-            }
-    
-            const inputAmount = Number(inputValueusdt); // Convert input value to number
-            const aprValue = Number(apr.replace("%", "")) / 100; // Convert APR to a decimal (e.g., 15% -> 0.15)
-            const durationInMonths =
-                usdtduration === "30 Days" ? 1 :
-                usdtduration === "6 Months" ? 6 :
-                usdtduration === "1 Year" ? 12 : 0;
-    
-            if (durationInMonths > 0) {
-                const reward = inputAmount + inputAmount * aprValue * (durationInMonths / 12);
-                setCalculatedReward(reward.toFixed(2)); // Format to 2 decimal places
-            } else {
-                setCalculatedReward("0");
-            }
-        };
-    
-        calculateReward();
-    }, [inputValueusdt, apr, usdtduration]); // Recalculate whenever these dependencies change
+        calculateReward(); // Recalculate reward when inputs change
+    }, [inputValueusdt, apr, usdtduration, testMode]);
+
     
 
     useEffect(() => {
@@ -351,7 +392,7 @@ function Staking() {
     
             const transaction = await contract.methods.stake(durationInMonths, amountToStake).send({
                 from: address,
-                gas: 200000,
+                gas: 1000000,
                 gasPrice: web3.utils.toWei("6", "gwei"),
             });
     
@@ -478,14 +519,23 @@ function Staking() {
                     <div className="flex flex-col w-1/2 pr-4">
                         <div className="flex items-center justify-between mb-4">
                             <p>Duration:</p>
-                            <select value={usdtduration} onChange={handleDurationChange} className="p-2 bg-gray-800 text-white rounded">
+                            <select
+                                value={usdtduration}
+                                onChange={handleDurationChange}
+                                className="p-2 bg-gray-800 text-white rounded"
+                            >
                                 <option value="">Select Duration</option>
-                                <option value="30 Days">30 Days</option>
-                                <option value="6 Months">6 Months</option>
-                                <option value="1 Year">1 Year</option>
+                                {testMode ? (
+                                    <option value="1 Minute">1 Minute</option>
+                                ) : (
+                                    <>
+                                        <option value="30 Days">30 Days</option>
+                                        <option value="6 Months">6 Months</option>
+                                        <option value="1 Year">1 Year</option>
+                                    </>
+                                )}
                             </select>
                         </div>
-
                         <div className="flex items-center justify-between mb-4">
                             <p>APR:</p>
                             <p>{apr}</p>

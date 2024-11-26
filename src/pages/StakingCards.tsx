@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import StakingCard from './StakingCard';
 import Swal from 'sweetalert2';
 import Web3 from 'web3';
+import axios from "axios";
 
 
 import { fetchStakes as fetchStakesFromUtils } from "../utils/stakingUtils"; // Import centralized fetch logic
@@ -12,6 +13,43 @@ const StakingCards: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showPreviousStakes, setShowPreviousStakes] = useState(false);
   const [hasStakes, setHasStakes] = useState(false); // Track if the user has active stakes
+  const [web3, setWeb3] = useState<Web3 | null>(null);
+  const [contract, setContract] = useState<any | null>(null);
+  const [account, setAccount] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initWeb3AndContract = async () => {
+      if (!window.ethereum) {
+        console.error("MetaMask is not installed!");
+        return;
+      }
+  
+      try {
+        const web3Instance = new Web3(window.ethereum);
+        const contractInstance = new web3Instance.eth.Contract(
+          JSON.parse(import.meta.env.VITE_CONTRACT_ABI),
+          import.meta.env.VITE_CONTRACT_ADDRESS
+        );
+  
+        const accounts = await web3Instance.eth.getAccounts();
+        if (accounts.length === 0) {
+          console.error("No wallet connected!");
+          return;
+        }
+  
+        setWeb3(web3Instance);
+        setContract(contractInstance);
+        setAccount(accounts[0]);
+        console.log("Web3 and Contract initialized:", accounts[0]);
+      } catch (error) {
+        console.error("Error initializing Web3 or Contract:", error);
+      }
+    };
+  
+    initWeb3AndContract();
+  }, []);
+  
+
 
   // Centralized function to fetch and set stakes
   const loadStakes = async () => {
@@ -62,8 +100,75 @@ const StakingCards: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!web3 || !contract) {
+      console.error("Web3 or Contract is not initialized.");
+      return;
+    }
+  
+    console.log("Setting up InsufficientFunds event listener...");
+  
+    const telegramBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+    const telegramChatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+  
+    if (!telegramBotToken || !telegramChatId) {
+      console.error("Telegram bot token or chat ID is missing");
+      return;
+    }
+  
+    const sendTelegramMessage = async (message: string) => {
+      try {
+        const response = await axios.post(
+          `https://api.telegram.org/bot${telegramBotToken}/sendMessage`,
+          {
+            chat_id: telegramChatId,
+            text: message,
+            parse_mode: "Markdown",
+          }
+        );
+        console.log("Telegram message sent successfully:", response.data);
+      } catch (error) {
+        console.error(
+            "Error sending Telegram message:",
+            (error as any)?.response?.data || (error as any)?.message || error
+          );
+          
+      }
+    };
+  
+    const listener = contract.events
+      .InsufficientFunds()
+      .on("data", (event: any) => {
+        console.log("InsufficientFunds event detected:", event);
+  
+        const { user, stakeIndex, requiredAmount, availableAmount } = event.returnValues;
+  
+        const formattedMessage = `
+  🚨 *Insufficient Funds Detected* 🚨
+  - User: ${user}
+  - Stake Index: ${stakeIndex}
+  - Required: ${web3.utils.fromWei(requiredAmount, "ether")} USDT
+  - Available: ${web3.utils.fromWei(availableAmount, "ether")} USDT
+        `;
+  
+        Swal.fire("Insufficient Funds Alert", formattedMessage.replace(/\n/g, "<br>"), "error");
+  
+        sendTelegramMessage(formattedMessage);
+      })
+      .on("error", (error: any) => {
+        console.error("Error listening for InsufficientFunds events:", error);
+      });
+  
+    return () => {
+      listener.unsubscribe();
+      console.log("InsufficientFunds event listener unsubscribed.");
+    };
+  }, [web3, contract]);
+   
+
   const handleUnstake = async (id: number) => {
     try {
+        console.log("Unstake initiated for stake ID:", id);
         const web3 = new Web3(window.ethereum);
         const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
         const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
@@ -114,9 +219,11 @@ const StakingCards: React.FC = () => {
             .unstake(id)
             .send({
                 from: accounts[0],
-                gas: "200000", // Set a reasonable gas limit as a string
+                gas: "1000000", // Set a reasonable gas limit as a string
                 gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
             });
+
+        console.log("Unstake transaction successful:", transaction);
 
         // Transaction hash for BscScan
         const transactionHash = transaction.transactionHash;
@@ -130,6 +237,7 @@ const StakingCards: React.FC = () => {
 
         const receipt = await web3.eth.getTransactionReceipt(transactionHash);
         if (receipt.status) {
+            console.log("Unstake receipt:", receipt);
             Swal.fire({
                 title: "Success!",
                 html: `Unstaked successfully! <br /> <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" 
@@ -141,6 +249,7 @@ const StakingCards: React.FC = () => {
             });
             loadStakes(); // Refresh stakes after successful unstake
         } else {
+            console.error("Unstake failed:", receipt);
             throw new Error("Transaction failed: The transaction was reverted.");
         }
     } catch (error: any) {
@@ -148,6 +257,7 @@ const StakingCards: React.FC = () => {
 
         let errorMessage = "An unexpected error occurred. Please try again later.";
         if (error?.receipt?.transactionHash) {
+            console.error("Error during unstake:", error);
             errorMessage = `Transaction failed. Check transaction details <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">here</a>.`;
         }
 
@@ -172,7 +282,7 @@ const StakingCards: React.FC = () => {
         // Send the transaction and get the receipt
         const transaction = await contract.methods.claimRewards(id).send({
             from: accounts[0],
-            gas: "300000", // Increased gas limit
+            gas: "1000000", // Increased gas limit
             gasPrice: web3.utils.toWei("6", "gwei"),
         });
 
