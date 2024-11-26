@@ -8,14 +8,14 @@ import axios from "axios";
 import { fetchStakes as fetchStakesFromUtils } from "../utils/stakingUtils"; // Import centralized fetch logic
 
 const StakingCards: React.FC = () => {
-  const [stakes, setStakes] = useState<any[]>([]);
-  const [previousStakes, setPreviousStakes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showPreviousStakes, setShowPreviousStakes] = useState(false);
-  const [hasStakes, setHasStakes] = useState(false); // Track if the user has active stakes
-  const [web3, setWeb3] = useState<Web3 | null>(null);
-  const [contract, setContract] = useState<any | null>(null);
-  const [account, setAccount] = useState<string | null>(null);
+    const [stakes, setStakes] = useState<any[]>([]);
+    const [previousStakes, setPreviousStakes] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showPreviousStakes, setShowPreviousStakes] = useState(false);
+    const [hasStakes, setHasStakes] = useState(false); // Track if the user has active stakes
+    const [web3, setWeb3] = useState<Web3 | null>(null);
+    const [contract, setContract] = useState<any | null>(null);
+    const [account, setAccount] = useState<string | null>(null);
 
   useEffect(() => {
     const initWeb3AndContract = async () => {
@@ -23,20 +23,20 @@ const StakingCards: React.FC = () => {
         console.error("MetaMask is not installed!");
         return;
       }
-  
+
       try {
         const web3Instance = new Web3(window.ethereum);
         const contractInstance = new web3Instance.eth.Contract(
-          JSON.parse(import.meta.env.VITE_CONTRACT_ABI),
+          JSON.parse(import.meta.env.VITE_CONTRACT_ABI || '[]'), // Fallback to empty array if ABI is missing
           import.meta.env.VITE_CONTRACT_ADDRESS
         );
-  
+
         const accounts = await web3Instance.eth.getAccounts();
         if (accounts.length === 0) {
           console.error("No wallet connected!");
           return;
         }
-  
+
         setWeb3(web3Instance);
         setContract(contractInstance);
         setAccount(accounts[0]);
@@ -45,10 +45,9 @@ const StakingCards: React.FC = () => {
         console.error("Error initializing Web3 or Contract:", error);
       }
     };
-  
+
     initWeb3AndContract();
   }, []);
-  
 
 
   // Centralized function to fetch and set stakes
