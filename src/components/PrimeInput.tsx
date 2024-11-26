@@ -8,27 +8,33 @@ interface PrimeInputProps {
 }
 
 const PrimeInput: React.FC<PrimeInputProps> = ({ value, setValue, validatePrime, className }) => {
-  const [displayValue, setDisplayValue] = useState(value);
   const [isChanging, setIsChanging] = useState(false);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = event.target.value.replace(/[^0-9.]/g, '');
+    let newValue = event.target.value;
+
+    // Allow only numbers and a single decimal point
+    newValue = newValue.replace(/[^0-9.]/g, ''); // Remove invalid characters
+    const parts = newValue.split('.');
+
+    // If more than one decimal, retain only the first one
+    if (parts.length > 2) {
+      newValue = parts[0] + '.' + parts[1]; // Rejoin the first two parts
+    }
+
+    // Update the state with the cleaned value
     setValue(newValue);
+
+    // Trigger the highlight effect
+    setIsChanging(true);
   };
 
   const handleBlur = () => {
     validatePrime(value, setValue);
   };
 
-  const formatNumber = (num: string) => {
-    const [intPart, decimalPart] = num.split('.');
-    return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimalPart ? `.${decimalPart}` : '');
-  };
-
   useEffect(() => {
-    setDisplayValue(formatNumber(value));
-    setIsChanging(true);
-    const timeout = setTimeout(() => setIsChanging(false), 300);
+    const timeout = setTimeout(() => setIsChanging(false), 300); // Reset highlight effect
     return () => clearTimeout(timeout);
   }, [value]);
 
@@ -40,7 +46,7 @@ const PrimeInput: React.FC<PrimeInputProps> = ({ value, setValue, validatePrime,
                   transition-transform duration-300 ease-out transform
                   ${isChanging ? 'text-yellow-400 scale-105' : 'text-white scale-100'}
                   focus:ring-4 focus:ring-blue-300`}
-      value={displayValue}
+      value={value}
       onChange={handleInputChange}
       onBlur={handleBlur}
       style={{

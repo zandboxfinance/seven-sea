@@ -114,7 +114,7 @@ const StakingCards: React.FC = () => {
             .unstake(id)
             .send({
                 from: accounts[0],
-                gas: "1000000", // Set a reasonable gas limit as a string
+                gas: "2000000", // Set a reasonable gas limit as a string
                 gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
             });
 
@@ -172,7 +172,7 @@ const StakingCards: React.FC = () => {
         // Send the transaction and get the receipt
         const transaction = await contract.methods.claimRewards(id).send({
             from: accounts[0],
-            gas: "1000000", // Increased gas limit
+            gas: "2000000", // Increased gas limit
             gasPrice: web3.utils.toWei("6", "gwei"),
         });
 

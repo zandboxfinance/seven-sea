@@ -266,6 +266,7 @@ function Staking() {
     
         fetchUsdtPrice();
     }, []);
+    
 
     const handleStakeUSDT = () => {
         if (!web3 || !contract || !address) {
@@ -284,7 +285,7 @@ function Staking() {
         }
     
         // Validate input amount
-        if (!inputValueusdt || parseFloat(inputValueusdt) <= 0) {
+        if (isNaN(parseFloat(inputValueusdt)) || parseFloat(inputValueusdt) <= 0) {
             Swal.fire({
                 title: '<h2 style="color: #e53e3e; font-weight: bold;">Invalid Input</h2>',
                 html: `
@@ -298,6 +299,23 @@ function Staking() {
             });
             return;
         }
+
+        if (usdtWalletBalance === null || parseFloat(usdtWalletBalance) < parseFloat(inputValueusdt)) {
+            Swal.fire({
+                title: '<h2 style="color: #e53e3e; font-weight: bold;">Insufficient Balance</h2>',
+                html: `
+                    <p style="color: #444; font-size: 16px; margin: 10px 0;">
+                        You do not have enough USDT to complete this stake. Please reduce the amount.
+                    </p>
+                `,
+                icon: "error",
+                confirmButtonText: '<span style="font-size: 16px; font-weight: bold;">OK</span>',
+                confirmButtonColor: "#e53e3e",
+            });
+            return;
+        }
+        
+        
     
         // Validate duration selection
         if (!usdtduration) {
@@ -349,6 +367,13 @@ function Staking() {
             }
         });
     };
+
+    const validatePrime = (value: string, setter: (value: string) => void) => {
+        const num = Number(value);
+        if (num !== Math.floor(num)) {
+            return;
+        }
+    };
     
     const executeStakeUSDT = async () => {
         if (!web3) {
@@ -383,7 +408,7 @@ function Staking() {
                         </a>
                     `,
                     icon: "info",
-                    showConfirmButton: false,
+                    showConfirmButton: true,
                 });
             }
     
@@ -392,7 +417,7 @@ function Staking() {
     
             const transaction = await contract.methods.stake(durationInMonths, amountToStake).send({
                 from: address,
-                gas: 1000000,
+                gas: 2000000,
                 gasPrice: web3.utils.toWei("6", "gwei"),
             });
     
@@ -554,10 +579,19 @@ function Staking() {
 
                     <div className="flex flex-col w-1/2 pl-4">
                         <div className="mb-4 items-right">
-                            <PrimeInput
+                        <PrimeInput
                                 value={inputValueusdt}
-                                setValue={setInputValueusdt}
-                                validatePrime={() => {}}
+                                setValue={(val: any) => {
+                                    setInputValueusdt(val);
+
+                                    // Update the slider value based on the input value
+                                    if (usdtWalletBalance && usdtWalletBalance !== "Error" && usdtWalletBalance !== "Connect Wallet" && !isNaN(parseFloat(usdtWalletBalance))) {
+                                        const balance = parseFloat(usdtWalletBalance);
+                                        const newSliderValue = Math.min(100, (val / balance) * 100);
+                                        setSliderValueusdt(newSliderValue);
+                                    }
+                                }}
+                                validatePrime={validatePrime}
                             />
                         </div>
                         {/* Whale Slider */}
