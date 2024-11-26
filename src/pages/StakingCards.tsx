@@ -260,51 +260,53 @@ const StakingCards: React.FC = () => {
 
   return (
     <div>
-      {!hasStakes ? (
-        <div>
-          <div className="w-full lg:w-[100%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
-            <h1 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h1>
-            <p className="text-white mb-4 text-2xl">You don’t have any active stakes yet.</p>
-            <p className="text-white mb-4 text-2xl">Start your journey as a whale and make your first stake.</p>
-            <button
-              onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-blue-500 text-3xl hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
-            >
-              Get Started
-            </button>
-          </div>
-          {previousStakes.length > 0 && (
-            <button
-              className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg"
-              onClick={() => setShowPreviousStakes(!showPreviousStakes)}
-            >
-              {showPreviousStakes ? 'Hide My Previous Stakes' : 'Show My Previous Stakes'}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {stakes.map((stake, index) => (
-            <StakingCard
-              key={index}
-              {...stake}
-              onUnstake={() => handleUnstake(stake.id)}
-              onClaimReward={() => handleClaimRewards(stake.id)}
-            />
-          ))}
-        </div>
-      )}
-  
-      {showPreviousStakes && previousStakes.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold mt-8 mb-4">My Previous Stakes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {previousStakes.map((stake, index) => (
-              <StakingCard key={index} {...stake} />
+        {!hasStakes ? (
+            <div>
+            <div className="w-full lg:w-[100%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
+                <h1 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h1>
+                <p className="text-white mb-4 text-2xl">You don’t have any active stakes yet.</p>
+                <p className="text-white mb-4 text-2xl">Start your journey as a whale and make your first stake.</p>
+                <button
+                onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="bg-blue-500 text-3xl hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
+                >
+                Get Started
+                </button>
+            </div>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {stakes.map((stake, index) => (
+                <StakingCard
+                key={index}
+                {...stake}
+                onUnstake={() => handleUnstake(stake.id)}
+                onClaimReward={() => handleClaimRewards(stake.id)}
+                />
             ))}
-          </div>
-        </div>
-      )}
+            </div>
+        )}
+
+        {/* Move this button outside the conditional rendering */}
+        {previousStakes.length > 0 && (
+            <button
+            className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg"
+            onClick={() => setShowPreviousStakes(!showPreviousStakes)}
+            >
+            {showPreviousStakes ? 'Hide My Previous Stakes' : 'Show My Previous Stakes'}
+            </button>
+        )}
+
+        {showPreviousStakes && previousStakes.length > 0 && (
+            <div>
+            <h2 className="text-2xl font-bold mt-8 mb-4">My Previous Stakes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {previousStakes.map((stake, index) => (
+                <StakingCard key={index} {...stake} />
+                ))}
+            </div>
+            </div>
+        )}
     </div>
   );  
 };
