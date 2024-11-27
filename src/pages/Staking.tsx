@@ -12,7 +12,7 @@ import bg_whale from '../assets/bg-whale.png';
 import linktree1 from '../assets/social/linktree1.png';
 import discord1 from '../assets/social/discord1.png';
 import Swal from 'sweetalert2';
-import { fetchStakes } from '../utils/stakingUtils';
+import { fetchStakes } from "../utils/stakingUtils";
 
 
 import WhaleSlider from "../components/SliderComponent";

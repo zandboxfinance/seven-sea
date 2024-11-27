@@ -31,16 +31,21 @@ export const fetchStakes = async () => {
       unlockDate: new Date(Number(stake.stakeEnd) * 1000).toLocaleString(),
       rewards: web3.utils.fromWei(stake.rewards.toString(), 'ether'),
       claimed: stake.claimed,
+      unstaked: parseFloat(web3.utils.fromWei(stake.stakedAmount.toString(), 'ether')) === 0 // Check if staked amount is zero
     }));
-
-    const activeStakes = formattedStakes.filter((stake) => !stake.claimed);
-    const previousStakes = formattedStakes.filter((stake) => stake.claimed);
-
+    
+    // Filter stakes
+    const activeStakes = formattedStakes.filter((stake) => !stake.unstaked && !stake.claimed);
+    const previousStakes = formattedStakes.filter((stake) => stake.unstaked || stake.claimed);
+    
+    
+    
     return {
       activeStakes,
       previousStakes,
       hasStakes: activeStakes.length > 0,
     };
+    
   } catch (error) {
     console.error('Error fetching stakes:', error);
     throw error;

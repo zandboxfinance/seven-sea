@@ -26,7 +26,7 @@ const StakingCards: React.FC = () => {
       setLoading(false);
     }
   };
-
+  
   useEffect(() => {
     let isMounted = true; // Add a flag to prevent state updates if the component unmounts
 
@@ -64,101 +64,108 @@ const StakingCards: React.FC = () => {
 
   const handleUnstake = async (id: number) => {
     try {
-        const web3 = new Web3(window.ethereum);
-        const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
-        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-        const contract = new web3.eth.Contract(contractABI, contractAddress);
-        const accounts = await web3.eth.getAccounts();
-
-        interface StakeInfo {
-            stakedAmount: string;
-            stakedAt: string;
-            stakeEnd: string;
-            rewards: string;
-            APR: string;
-            claimed: boolean;
-        }
-
-        const stakeInfo: StakeInfo[] = await contract.methods.getUserStakes(accounts[0]).call();
-        const currentStake = stakeInfo[id];
-
-        if (!currentStake) {
-            Swal.fire({
-                title: "Error",
-                text: "Invalid stake ID. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-            });
-            return;
-        }
-
-        const currentTime = Math.floor(Date.now() / 1000);
-        const stakeEnd = Number(currentStake.stakeEnd);
-
-        if (currentTime < stakeEnd) {
-            const result = await Swal.fire({
-                title: "Early Unstake Warning",
-                html: "You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes, Unstake",
-                cancelButtonText: "No, Cancel",
-            });
-
-            if (!result.isConfirmed) {
-                return;
-            }
-        }
-
-        const transaction = await contract.methods
-            .unstake(id)
-            .send({
-                from: accounts[0],
-                gas: "2000000", // Set a reasonable gas limit as a string
-                gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
-            });
-
-        // Transaction hash for BscScan
-        const transactionHash = transaction.transactionHash;
-
+      const web3 = new Web3(window.ethereum);
+      const contractABI = JSON.parse(import.meta.env.VITE_CONTRACT_ABI);
+      const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+      const contract = new web3.eth.Contract(contractABI, contractAddress);
+      const accounts = await web3.eth.getAccounts();
+  
+      interface StakeInfo {
+        stakedAmount: string;
+        stakedAt: string;
+        stakeEnd: string;
+        rewards: string;
+        APR: string;
+        claimed: boolean;
+      }
+  
+      // Fetch stake details
+      const stakeInfo: StakeInfo[] = await contract.methods.getUserStakes(accounts[0]).call();
+      const currentStake = stakeInfo[id];
+  
+      if (!currentStake) {
         Swal.fire({
-            title: "Transaction in Progress",
-            html: `Transaction Hash: <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">View on BscScan</a>`,
-            icon: "info",
-            confirmButtonText: "OK",
+          title: "Error",
+          text: "Invalid stake ID. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
         });
-
-        const receipt = await web3.eth.getTransactionReceipt(transactionHash);
-        if (receipt.status) {
-            Swal.fire({
-                title: "Success!",
-                html: `Unstaked successfully! <br /> <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" 
-                   rel="noopener noreferrer" 
-                   style="background: #e53e3e; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
-                   View Transaction on BscScan</a>`,
-                icon: "success",
-                confirmButtonText: "OK",
-            });
-            loadStakes(); // Refresh stakes after successful unstake
-        } else {
-            throw new Error("Transaction failed: The transaction was reverted.");
+        return;
+      }
+  
+      const currentTime = Math.floor(Date.now() / 1000);
+      const stakeEnd = Number(currentStake.stakeEnd);
+  
+      // If unstaking early, warn the user about penalties
+      if (currentTime < stakeEnd) {
+        const result = await Swal.fire({
+          title: "Early Unstake Warning",
+          html: "You are attempting to unstake early.<br>A 6% penalty will be applied.<br>Do you wish to continue?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Yes, Unstake",
+          cancelButtonText: "No, Cancel",
+        });
+  
+        if (!result.isConfirmed) {
+          return;
         }
+      }
+  
+      // Determine the amount to unstake
+      const totalToUnstake =
+        parseFloat(currentStake.rewards) > 0 && !currentStake.claimed
+          ? parseFloat(currentStake.stakedAmount) + parseFloat(currentStake.rewards) // Include rewards
+          : parseFloat(currentStake.stakedAmount); // Only staked amount if rewards are claimed
+  
+      const transaction = await contract.methods.unstake(id).send({
+        from: accounts[0],
+        gas: "2000000", // Set a reasonable gas limit as a string
+        gasPrice: web3.utils.toWei("6", "gwei"), // Set gas price
+      });
+  
+      // Transaction hash for BscScan
+      const transactionHash = transaction.transactionHash;
+  
+      Swal.fire({
+        title: "Transaction in Progress",
+        html: `Transaction Hash: <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">View on BscScan</a>`,
+        icon: "info",
+        confirmButtonText: "OK",
+      });
+  
+      const receipt = await web3.eth.getTransactionReceipt(transactionHash);
+      if (receipt.status) {
+        Swal.fire({
+          title: "Success!",
+          html: `Unstaked successfully! <br /> <a href="https://testnet.bscscan.com/tx/${transactionHash}" target="_blank" 
+             rel="noopener noreferrer" 
+             style="background: #e53e3e; padding: 10px 20px; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-top: 10px;">
+             View Transaction on BscScan</a>`,
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+        await loadStakes(); // Refresh stakes after successful unstake
+      } else {
+        throw new Error("Transaction failed: The transaction was reverted.");
+      }
     } catch (error: any) {
-        console.error("Error during unstake:", error);
-
-        let errorMessage = "An unexpected error occurred. Please try again later.";
-        if (error?.receipt?.transactionHash) {
-            errorMessage = `Transaction failed. Check transaction details <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">here</a>.`;
-        }
-
-        Swal.fire({
-            title: "Unstake Failed",
-            html: errorMessage,
-            icon: "error",
-            confirmButtonText: "OK",
-        });
+      console.error("Error during unstake:", error);
+  
+      let errorMessage = "An unexpected error occurred. Please try again later.";
+      if (error?.receipt?.transactionHash) {
+        errorMessage = `Transaction failed. Check transaction details <a href="https://testnet.bscscan.com/tx/${error.receipt.transactionHash}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">here</a>.`;
+      }
+  
+      Swal.fire({
+        title: "Unstake Failed",
+        html: errorMessage,
+        icon: "error",
+        confirmButtonText: "OK",
+      });
     }
- };
+  };
+  
 
 
  const handleClaimRewards = async (id: number) => {
@@ -261,21 +268,20 @@ const StakingCards: React.FC = () => {
   return (
     <div>
         {!hasStakes ? (
-            <div>
-            <div className="w-full lg:w-[100%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
-                <h1 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h1>
-                <p className="text-white mb-4 text-2xl">You don’t have any active stakes yet.</p>
-                <p className="text-white mb-4 text-2xl">Start your journey as a whale and make your first stake.</p>
-                <button
-                onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="bg-blue-500 text-3xl hover:bg-blue-700 text-white p-3 rounded-md mt-4 transform hover:scale-105 transition-transform duration-300 focus:outline-none"
-                >
-                Get Started
-                </button>
-            </div>
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <div className="w-full lg:w-[100%] flex flex-col items-center justify-center bg-black rounded-lg p-8">
+            <h1 className="text-white text-3xl font-bold mb-4">No Stakes Yet</h1>
+            <p className="text-white mb-4 text-2xl">You don’t have any active stakes yet.</p>
+            <button
+              onClick={() => document.getElementById('staking-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="bg-blue-500 text-3xl hover:bg-blue-700 text-white p-3 rounded-md mt-4"
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {stakes.map((stake, index) => (
                 <StakingCard
                 key={index}
@@ -284,29 +290,34 @@ const StakingCards: React.FC = () => {
                 onClaimReward={() => handleClaimRewards(stake.id)}
                 />
             ))}
-            </div>
-        )}
+        </div>
+      )}
 
-        {/* Move this button outside the conditional rendering */}
-        {previousStakes.length > 0 && (
-            <button
-            className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg"
-            onClick={() => setShowPreviousStakes(!showPreviousStakes)}
-            >
-            {showPreviousStakes ? 'Hide My Previous Stakes' : 'Show My Previous Stakes'}
-            </button>
-        )}
+      {previousStakes.length > 0 && (
+        <button
+          className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg"
+          onClick={() => setShowPreviousStakes(!showPreviousStakes)}
+        >
+          {showPreviousStakes ? 'Hide My Previous Stakes' : 'Show My Previous Stakes'}
+        </button>
+      )}
 
-        {showPreviousStakes && previousStakes.length > 0 && (
-            <div>
+      {showPreviousStakes && previousStakes.length > 0 && (
+        <div>
             <h2 className="text-2xl font-bold mt-8 mb-4">My Previous Stakes</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {previousStakes.map((stake, index) => (
-                <StakingCard key={index} {...stake} />
-                ))}
+            {previousStakes.map((stake, index) => (
+                <StakingCard
+                key={index}
+                {...stake}
+                onUnstake={() => handleUnstake(stake.id)} // Add onUnstake logic here
+                onClaimReward={() => {}}
+                />
+            ))}
             </div>
-            </div>
-        )}
+        </div>
+      )}
+
     </div>
   );  
 };
